@@ -1,0 +1,118 @@
+---
+title: "Assignment 4: Mini Exploratory Report"
+author: "Will Geiken"
+date: "11/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(kableExtra)
+library(janitor)
+library(here)
+library(ggbeeswarm)
+library(effsize)
+library(broom)
+library(tidyverse)
+
+bonanza_hares <- read.csv(here("data", "bonanza_hares.csv"))
+```
+
+## Introduction
+
+## Data and Analysis
+
+## Exploratory Findings
+
+### Annual Juvenile Hare Trap Counts
+
+```{r, include=FALSE}
+juvenile_counts <- bonanza_hares %>% 
+  mutate(date = mdy(date)) %>% 
+  mutate(year = year(date)) %>% 
+  filter(age == "j")
+
+ggplot(data = juvenile_counts, aes(x = year)) +
+  geom_bar() +
+  theme_linedraw() +
+  labs(x = "Year",
+       y = "Juvenile Hare Count")
+
+count_by_year <- juvenile_counts %>%
+  count(year)
+# 1999 had 126 counts, 1998, 2002 and 2009 had 0, next lowest was 2 in 2010
+
+#15 years, mean = 
+
+#total_catch <- count_by_year %>% 
+  #sum(num)
+
+```
+
+Major Takeaways
+
+The year with the highest count of juvenile hares was 1999 with 126 juveniles counted, while the lowest were 1998, 2002, and 2009 with zero juveniles counted. Over the course of the study, the number of juvenile catches declined during the first few years and then oscillated for the remaining years. ADD MORE WITH MEAN ETC.
+
+### Visualize Juvenile Hare Weights
+
+```{r, include=FALSE}
+library(beeswarm)
+
+juvenile_weights <- bonanza_hares %>% 
+  select(weight, sex, grid)
+
+#beeswarm(weight ~ grid, data = juvenile_weights) -- not ideal
+
+ggplot(data = juvenile_weights, aes(x = grid, y = weight)) +
+  geom_point()
+  
+```
+
+### Juvenile weight comparison
+
+```{r}
+juvenile_sex_counts <- bonanza_hares %>% 
+  filter(age == "j") %>% 
+  select(weight, sex) %>%
+  na.omit()  #gets rid of NA values so they don't throw off the means etc.
+  
+#histogram
+ggplot(data = juvenile_sex_counts, aes(x = weight)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~sex)
+  
+#QQ plot
+ggplot(data = juvenile_sex_counts, aes(sample = weight)) +
+  geom_qq() +
+  facet_wrap(~sex) #seems non-linear
+ 
+#t-test
+hares_f <- juvenile_sex_counts %>% 
+  filter(sex == "f") %>% 
+  pull(weight)
+
+hares_m <- juvenile_sex_counts %>% 
+  filter(sex == "m") %>% 
+  pull(weight)
+
+hares_ttest <- t.test(hares_f, hares_m)
+
+hares_ttest #gives a p-value of 0.007093
+
+cohen.d(hares_f, hares_m)
+#gives a cohen's d of -0.2904674, which is small, so the effect size is small
+
+#descriptive stats NEEDS TO MOVE TO INCLUDED SECTION
+juvenile_statistics <- juvenile_sex_counts %>% 
+  group_by(sex) %>%
+  summarize(mean_weight = mean(weight),
+            sd_weight = sd(weight),
+            sample_size = n())
+
+
+  kable(juvenile_statistics,
+      caption = "WRITE A CAPTION WILL") %>% 
+  kable_styling()
+```
+
