@@ -23,9 +23,13 @@ bonanza_hares <- read.csv(here("data", "bonanza_hares.csv"))
 
 ## Data and Analysis
 
+Kielland, K., F.S. Chapin, R.W. Ruess, and Bonanza Creek LTER. 2017. Snowshoe hare physical data in Bonanza Creek Experimental Forest: 1999-Present ver 22. Environmental Data Initiative. https://doi.org/10.6073/pasta/03dce4856d79b91557d8e6ce2cbcdc14 (Accessed 2020-11-13).
+
+Bonanza Riparian is a flood zone along the Tanana River and Bonanza Mature is a mature black spruce forest approximately 1 km inland from the river and 2 km from the riparian plot. Bonbs Site used for live-trapping snowshoe hares to monitor abundance and survival. Located in a mature lowland black spruce stand.
+
 ## Exploratory Findings
 
-### Annual Juvenile Hare Trap Counts
+#### Annual Juvenile Hare Trap Counts
 
 ```{r, include=FALSE}
 juvenile_counts <- bonanza_hares %>% 
@@ -33,45 +37,84 @@ juvenile_counts <- bonanza_hares %>%
   mutate(year = year(date)) %>% 
   filter(age == "j")
 
-ggplot(data = juvenile_counts, aes(x = year)) +
-  geom_bar() +
-  theme_linedraw() +
-  labs(x = "Year",
-       y = "Juvenile Hare Count")
-
 count_by_year <- juvenile_counts %>%
-  count(year)
+  count(year)%>% 
+  complete(year = 1998:2012, fill = list(n = 0))
+
 # 1999 had 126 counts, 1998, 2002 and 2009 had 0, next lowest was 2 in 2010
 
-#15 years, mean = 
+total_hares <- sum(count_by_year$n)
+#378 total juvenile hares
 
-#total_catch <- count_by_year %>% 
-  #sum(num)
+mean_hares <- mean(count_by_year$n)
+#mean hares over 15 years = 25.2 hares/year
+
+sd_hares <- sd(count_by_year$n)
+#sd = 34.379, very high
 
 ```
 
-Major Takeaways
+```{r, echo = FALSE, results = TRUE, fig.cap = "Total annual counts of juvenile hare catches across all collection sites from 1998-2012"}
+ggplot(data = juvenile_counts, aes(x = year)) +
+  geom_bar(fill = "darkred") +
+  theme_linedraw() +
+  labs(x = "Year",
+       y = "Juvenile Hare Count")
+```
 
-The year with the highest count of juvenile hares was 1999 with 126 juveniles counted, while the lowest were 1998, 2002, and 2009 with zero juveniles counted. Over the course of the study, the number of juvenile catches declined during the first few years and then oscillated for the remaining years. ADD MORE WITH MEAN ETC.
+###### Major Takeaways
 
-### Visualize Juvenile Hare Weights
+The year with the highest count of juvenile hares was 1999 with 126 juveniles counted, while the lowest were 1998, 2002, and 2009 each with 0 juveniles counted. Proceeding from 1999, the number of juvenile catches declined during the first few years and then oscillated for the remaining years. The mean annual juvenile catch was `r (mean_hares)`, but that value belies the high year-to-year variation. Additionally, these values do not take into account the number of days spent trapping per year, the number of traps per site, and other statistics relevant to effort. If data collection continues, it would help to standardize data collection effort to avoid biasing trap counts for certain years or at certain sites. No responsible conclusive statements about annual variation can be drawn from the data as they exist.
+
+#### Visualize Juvenile Hare Weights
 
 ```{r, include=FALSE}
-library(beeswarm)
+library(ggbeeswarm)
 
 juvenile_weights <- bonanza_hares %>% 
   select(weight, sex, grid)
 
-#beeswarm(weight ~ grid, data = juvenile_weights) -- not ideal
+weights_summary_bonbs <- juvenile_weights %>% 
+  filter(grid == "bonbs") %>% 
+  group_by(sex) %>% 
+  summarize(bonbs_mean_weight = mean(weight, na.rm = TRUE))
 
-ggplot(data = juvenile_weights, aes(x = grid, y = weight)) +
-  geom_point()
+weights_summary_bonmat <- juvenile_weights %>% 
+  filter(grid == "bonmat") %>% 
+  group_by(sex) %>% 
+  summarize(bonmat_mean_weight = mean(weight, na.rm = TRUE))
+  
+weights_summary_bonrip <- juvenile_weights %>% 
+  filter(grid == "bonrip") %>%   
+  group_by(sex) %>% 
+  summarize(bonrip_mean_weight = mean(weight, na.rm = TRUE))
   
 ```
 
-### Juvenile weight comparison
 
-```{r}
+```{r, echo = FALSE, warning = FALSE, results = TRUE, fig.cap = "Juvenile hare weight distributions by sex at three collection sites: 'bonbs', 'bonmat', and 'bonrip'. Boxplots display the mean weight for each population, one standard deviation, and a 95% confidence interval."}
+ggplot(data = juvenile_weights,
+                aes(x = sex,
+                    y = weight,
+                    fill = sex)) +
+  geom_violin() +
+  geom_boxplot(width = 0.3, color = "black") +
+  facet_wrap(~grid) +
+  theme_linedraw() +
+  labs(
+    x = "Sex",
+    y = "Weight (g)"
+  ) +
+  scale_fill_brewer(palette = "Dark2")
+```
+
+###### Major Takeaways
+
+Wide spread in weights, no major tendency for one sex to be larger than the other, lots of low-outliers.
+
+#### Juvenile weight comparison
+
+```{r, include=FALSE}
 juvenile_sex_counts <- bonanza_hares %>% 
   filter(age == "j") %>% 
   select(weight, sex) %>%
@@ -81,11 +124,13 @@ juvenile_sex_counts <- bonanza_hares %>%
 ggplot(data = juvenile_sex_counts, aes(x = weight)) +
   geom_histogram(bins = 10) +
   facet_wrap(~sex)
+# looks more or less normally distributed, but the male data concerns me a little
   
 #QQ plot
 ggplot(data = juvenile_sex_counts, aes(sample = weight)) +
   geom_qq() +
-  facet_wrap(~sex) #seems non-linear
+  facet_wrap(~sex) 
+#the female data looks fairly linear, but the male data seems non-linear
  
 #t-test
 hares_f <- juvenile_sex_counts %>% 
@@ -103,12 +148,14 @@ hares_ttest #gives a p-value of 0.007093
 cohen.d(hares_f, hares_m)
 #gives a cohen's d of -0.2904674, which is small, so the effect size is small
 
-#descriptive stats NEEDS TO MOVE TO INCLUDED SECTION
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = TRUE}
 juvenile_statistics <- juvenile_sex_counts %>% 
   group_by(sex) %>%
-  summarize(mean_weight = mean(weight),
-            sd_weight = sd(weight),
-            sample_size = n())
+  summarize("Mean weight" = mean(weight),
+            "Standard deviation" = sd(weight),
+            "Sample size" = n())
 
 
   kable(juvenile_statistics,
@@ -116,3 +163,38 @@ juvenile_statistics <- juvenile_sex_counts %>%
   kable_styling()
 ```
 
+###### Major Takeaways
+
+Cohen's d is small (-0.26), p-value is small 0.0071, which suggests there is a significant difference, however, given the sample sizes that isn't surprising. The overall effect is so small that I blah nothing too concrete.
+
+#### Relationship between juvenile weight and hind foot length
+
+```{r, echo = FALSE, warning = FALSE, results = TRUE, fig.cap = "Juvenile"}
+juvenile_hndft <- bonanza_hares %>% 
+  filter(age == "j") %>% 
+  select(age, weight, hindft)
+
+ggplot(data = juvenile_hndft, aes(x = hindft, y = weight)) +
+  geom_point() +
+  labs( y = "Weight (g)",
+        x = "Hind foot length (units = ?)")
+
+hare_lm <- lm( weight ~ hindft, data = juvenile_hndft)
+
+summary(hare_lm)
+
+hare_lm_tidy <- broom::tidy(hare_lm)
+
+#write output
+
+#check assumptions
+
+plot(hare_lm)
+
+#definite uneven spread in residual, curve in qq plot, data close to Cook's distance. It is not responsible to run a regression.
+```
+
+
+## Summary
+
+## Citations
