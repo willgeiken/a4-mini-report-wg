@@ -19,17 +19,20 @@ library(tidyverse)
 bonanza_hares <- read.csv(here("data", "bonanza_hares.csv"))
 ```
 
-## Introduction
+# Introduction
 
-## Data and Analysis
+This study explores showshoe hare data collected in the Bonanza Creek Experimental Forest from 1998 to 2012. In addition to assessing any temporal changes in hare populations, this study also assesses spatial variations between hare sexes and weights across three catch sites. Further analysis on the relationships between hare sex and weight as well as hind foot length and weight are included to better understand population-wide variation. All data were taken from Snowshoe hare physical data in Bonanza Creek Experimental Forest: 1999-Present ver 22, which was produced by Kielland, K., F.S. Chapin, R.W. Ruess, and Bonanza Creek LTER.
+
+# Data and Analysis
+
+While the data set used includes multiple variables, this report uses only capture date, weight, sex, and hind foot length for juvenile aged hares. Hares were trapped in three locations including the Bonanza riparian, the Bonanza mature, or the Bonanza site. Bonanza riparian (bonrip) is a flood zone along the Tanana River, and Bonanza mature (bonmat) is a mature black spruce forest approximately one km inland from the river and two km from the riparian plot. Meanwhile the Bonanza site (bonbs) was located in a mature lowland black spruce stand. A two-sample t-test is used to assess differences in mean weight between hare sexes, and effect size is measured using Cohen's d. The relationship between weight and hind foot length among all catches is assessed using a linear regression and a Pearson's r value is calculated to assess the strength of that relationship.
 
 Kielland, K., F.S. Chapin, R.W. Ruess, and Bonanza Creek LTER. 2017. Snowshoe hare physical data in Bonanza Creek Experimental Forest: 1999-Present ver 22. Environmental Data Initiative. https://doi.org/10.6073/pasta/03dce4856d79b91557d8e6ce2cbcdc14 (Accessed 2020-11-13).
 
-Bonanza Riparian is a flood zone along the Tanana River and Bonanza Mature is a mature black spruce forest approximately 1 km inland from the river and 2 km from the riparian plot. Bonbs Site used for live-trapping snowshoe hares to monitor abundance and survival. Located in a mature lowland black spruce stand.
 
-## Exploratory Findings
+# Exploratory Findings
 
-#### Annual Juvenile Hare Trap Counts
+### Annual Juvenile Hare Trap Counts
 
 ```{r, include=FALSE}
 juvenile_counts <- bonanza_hares %>% 
@@ -56,43 +59,49 @@ sd_hares <- sd(count_by_year$n)
 
 ```{r, echo = FALSE, results = TRUE, fig.cap = "Total annual counts of juvenile hare catches across all collection sites from 1998-2012"}
 ggplot(data = juvenile_counts, aes(x = year)) +
-  geom_bar(fill = "darkred") +
+  geom_bar(fill = "darkgreen") +
   theme_linedraw() +
   labs(x = "Year",
        y = "Juvenile Hare Count")
 ```
 
-###### Major Takeaways
+##### Major Takeaways
 
 The year with the highest count of juvenile hares was 1999 with 126 juveniles counted, while the lowest were 1998, 2002, and 2009 each with 0 juveniles counted. Proceeding from 1999, the number of juvenile catches declined during the first few years and then oscillated for the remaining years. The mean annual juvenile catch was `r (mean_hares)`, but that value belies the high year-to-year variation. Additionally, these values do not take into account the number of days spent trapping per year, the number of traps per site, and other statistics relevant to effort. If data collection continues, it would help to standardize data collection effort to avoid biasing trap counts for certain years or at certain sites. No responsible conclusive statements about annual variation can be drawn from the data as they exist.
 
-#### Visualize Juvenile Hare Weights
+### Visualize Juvenile Hare Weights
 
 ```{r, include=FALSE}
 library(ggbeeswarm)
 
 juvenile_weights <- bonanza_hares %>% 
+  filter(age == "j") %>% 
   select(weight, sex, grid)
 
+# mean calculations, visualized by the boxplots.
 weights_summary_bonbs <- juvenile_weights %>% 
   filter(grid == "bonbs") %>% 
   group_by(sex) %>% 
-  summarize(bonbs_mean_weight = mean(weight, na.rm = TRUE))
+  summarize(bonbs_mean_weight = mean(weight, na.rm = TRUE),
+            n = n())
 
 weights_summary_bonmat <- juvenile_weights %>% 
   filter(grid == "bonmat") %>% 
   group_by(sex) %>% 
-  summarize(bonmat_mean_weight = mean(weight, na.rm = TRUE))
+  summarize(bonmat_mean_weight = mean(weight, na.rm = TRUE),
+            n = n())
   
 weights_summary_bonrip <- juvenile_weights %>% 
   filter(grid == "bonrip") %>%   
   group_by(sex) %>% 
-  summarize(bonrip_mean_weight = mean(weight, na.rm = TRUE))
+  summarize(bonrip_mean_weight = mean(weight, na.rm = TRUE),
+            n = n())
   
 ```
 
 
-```{r, echo = FALSE, warning = FALSE, results = TRUE, fig.cap = "Juvenile hare weight distributions by sex at three collection sites: 'bonbs', 'bonmat', and 'bonrip'. Boxplots display the mean weight for each population, one standard deviation, and a 95% confidence interval."}
+```{r, echo = FALSE, warning = FALSE, results = TRUE, fig.cap = "Juvenile hare weight distributions by sex at three collection sites: Bonanza site (bonbs), Bonanza mature forest (bonmat), and Bonanza riparian (bonrip). Sex was denoted as female (f), male (m), or undetermined (NA). Boxplots display the mean weight for each population, one standard deviation, and a 95% confidence interval. Samples sizes are as follows. Bonbs: 35 f, 12 m, 1 NA. Bonmat: 36 f, 40 m, 7 NA. Bonrip: 129 f, 110 m, 7 NA."}
+
 ggplot(data = juvenile_weights,
                 aes(x = sex,
                     y = weight,
@@ -108,11 +117,11 @@ ggplot(data = juvenile_weights,
   scale_fill_brewer(palette = "Dark2")
 ```
 
-###### Major Takeaways
+##### Major Takeaways
 
-Wide spread in weights, no major tendency for one sex to be larger than the other, lots of low-outliers.
+There is a wide spread in weights across sexes at each of the sites. Within that spread there are a few trends, including that the mean male weights measured were higher than the mean female weights at each of the sites. The mean weights for both male and females at the bonbs site were also higher than the mean weights for any group at the remaining sites. However, the sample sizes varied greatly across sites, and it is entirely possible that the higher mean weights at bonbs a function of the small sample sizes at bonbs.  
 
-#### Juvenile weight comparison
+### Juvenile weight comparison
 
 ```{r, include=FALSE}
 juvenile_sex_counts <- bonanza_hares %>% 
@@ -142,11 +151,23 @@ hares_m <- juvenile_sex_counts %>%
   pull(weight)
 
 hares_ttest <- t.test(hares_f, hares_m)
+#gives a p-value of 0.007093
 
-hares_ttest #gives a p-value of 0.007093
-
-cohen.d(hares_f, hares_m)
+hares_cohen <- cohen.d(hares_f, hares_m)
 #gives a cohen's d of -0.2904674, which is small, so the effect size is small
+
+#Calculate the difference in means
+
+f_hares_mean_weight <- mean(hares_f)
+
+m_hares_mean_weight <- mean(hares_m)
+
+hare_mean_dif <- m_hares_mean_weight-f_hares_mean_weight
+
+#Tidy references for p-value
+hare_ttest_tidy <- broom::tidy(hares_ttest)
+
+hare_pval <- hare_ttest_tidy$p.value[1]
 
 ```
 
@@ -154,47 +175,86 @@ cohen.d(hares_f, hares_m)
 juvenile_statistics <- juvenile_sex_counts %>% 
   group_by(sex) %>%
   summarize("Mean weight" = mean(weight),
-            "Standard deviation" = sd(weight),
-            "Sample size" = n())
-
+             "Standard deviation" = sd(weight),
+             "Sample size" = n())
 
   kable(juvenile_statistics,
-      caption = "WRITE A CAPTION WILL") %>% 
+      caption = "Table below displays the mean, standard deviation, and sample size for male and female juvenile hares caught in the sampling process.") %>% 
   kable_styling()
 ```
 
-###### Major Takeaways
+##### Major Takeaways
 
-Cohen's d is small (-0.26), p-value is small 0.0071, which suggests there is a significant difference, however, given the sample sizes that isn't surprising. The overall effect is so small that I blah nothing too concrete.
+Mean male hare weights were greater than meal female weights by `r round(hare_mean_dif, 4)`, and a two-sample t-test for that difference returned a p-value of `r round(hare_pval, 4)`, which suggests that the weights of male hares differ from those of female hares. However, such a small p-value isn't surprising given the large sample sizes. Furthermore, the effect size of that difference is fairly small (Cohen's d = -0.29), meaning that the observed difference cannot responsibly be attributed strictly to sex and requires further investigation. Finally, the male weight data is somewhat abnormally distributed, which suggests that the assumptions necessary to even conduct this analysis may not have been met.
 
-#### Relationship between juvenile weight and hind foot length
+### Relationship between juvenile weight and hind foot length
 
-```{r, echo = FALSE, warning = FALSE, results = TRUE, fig.cap = "Juvenile"}
+```{r, include=FALSE}
 juvenile_hndft <- bonanza_hares %>% 
   filter(age == "j") %>% 
   select(age, weight, hindft)
 
+#Create an initial plot to visualize the data
+
 ggplot(data = juvenile_hndft, aes(x = hindft, y = weight)) +
-  geom_point() +
-  labs( y = "Weight (g)",
-        x = "Hind foot length (units = ?)")
+  geom_point()
+
+#Conduct a linear regression describing how hare weight changes with respect to hind foot length. (i.e. hind foot is independent, weight is dependent, which seems backwards to me)
 
 hare_lm <- lm( weight ~ hindft, data = juvenile_hndft)
 
 summary(hare_lm)
-
-hare_lm_tidy <- broom::tidy(hare_lm)
-
-#write output
 
 #check assumptions
 
 plot(hare_lm)
 
 #definite uneven spread in residual, curve in qq plot, data close to Cook's distance. It is not responsible to run a regression.
+
+#Tidy the data for reference in the document
+
+hare_lm_tidy <- broom::tidy(hare_lm)
+
+hare_int <- hare_lm_tidy$estimate[1]
+
+hare_coef <- hare_lm_tidy$estimate[2]
+
+hare_lm_out <- broom::glance(hare_lm)
+
+
+
+#run Pearson's r to check for the strength of the correlation
+
+juvenile_hare_cor <- cor.test(juvenile_hndft$hindft, juvenile_hndft$weight)
+
+hare_cor_tidy <- broom::tidy(juvenile_hare_cor)
+
+# r = 0.5466, t(247) = 10.258, p-value < 0.001
 ```
 
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = TRUE, fig.cap = "Relationship between juvenile hare hind foot length and weight. There is a moderate positive correlation (Pearson's R = 0.547) with an R^2^ value of 0.299, which suggests that the variation in weight is only partially explained by changes in hind foot length. Pre-regression considerations of the data likely negate any possible conclusions drawn from these results. "}
 
-## Summary
+#visualize the model
+ggplot(data = juvenile_hndft, aes(x = hindft, y = weight)) +
+  geom_point() +
+  labs( y = "Weight (g)",
+        x = "Hind foot length (mm)") +
+  geom_smooth(method = "lm",
+              color = "darkred",
+              size = 0.5,
+              fill = "grey10",
+              alpha = 0.5) +
+  theme_light() +
+  ggpubr::stat_regline_equation(label.x = 75, label.y = 1250) 
+#last line adds the equaltion to the chart, the label positions the equation on the chart at certain x and y coordinates
+```
 
-## Citations
+##### Major Takeaways
+
+A significant regression model was found ($\beta$ = `r round(hare_coef,3)`, F(`r hare_lm_out$df`,`r hare_lm_out$df.residual`) = `r round(hare_lm_out$statistic,1)`, p < 0.001) with an R^2^ of `r round(hare_lm_out$r.squared,3)`. This means that 29.9% of variation in juvenile hare weight is explained by its hindfoot length. The correlation for this relationship is a moderate positive correlation (Pearson's R = `r round(hare_cor_tidy$estimate[1], 4)`), which means that increased hindfoot length is moderately correlated with increased weight. However, there are many problems with the data that suggest a linear regression should not be conducted. For starters, the data is heteroscedastic with the spread of the residual value increasing across the span of the model, which suggests that the relationship between the two variables is not linear to begin with. Furthermore, the Q-Q plot for the model returns a non-linear result, which means that the residuals are not normally distributed compared to theoretical normal values. For both of those reasons, the assumptions necessary for a linear regression have not been met, and any results drawn from the linear regression conducted are unlikely to accurately represent the populations studied. 
+
+# Summary
+
+Based on the data collected and the results of the analysis, making strong claims about the trends or relationships examined is irresponsible. While there does appear to be a decrease in juvenile snowshoe hare populations over time based on sample sizes, those numbers are not averaged by effort. Additionally, the differences in mean weights across trapping sites observed might be due to the small sampling size at individual sites as opposed to a difference caused by an individual site. That is compounded by the evidence that the data spread within juvenile weights is large. Furthermore, the base assumptions necessary to compare the mean weights across sexes and the linear regression between hindfoot length and weight were not adequately met. As such, the results of both tests are questionable.
+
+# Citations
